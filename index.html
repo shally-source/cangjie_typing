@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>倉頡/速成輔助字型練習</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="login-screen" class="screen">
+            <h2>輔助字型練習系統</h2>
+            <p class="login-note">請輸入學生帳號與密碼，完成登入後再開始練習。</p>
+            <div class="input-group">
+                <label for="student-account">帳號：</label>
+                <input type="text" id="student-account" placeholder="例如：S01 或 P4A01">
+            </div>
+            <div class="input-group">
+                <label for="student-password">密碼：</label>
+                <input type="password" id="student-password" placeholder="請輸入密碼">
+            </div>
+            <div id="login-message" class="login-message"></div>
+            <button onclick="loginStudent()">登入</button>
+        </div>
+
+        <div id="category-screen" class="screen hidden">
+            <h2>請選擇挑戰關卡</h2>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="cat-philosophy" value="哲理類" checked> 哲理類</label>
+                <label><input type="checkbox" id="cat-stroke" value="筆劃類" checked> 筆劃類</label>
+                <label><input type="checkbox" id="cat-body" value="人身類" checked> 人身類</label>
+                <label><input type="checkbox" id="cat-shape" value="字型類" checked> 字型類</label>
+            </div>
+            <button onclick="startGame()">開始練習</button>
+        </div>
+
+        <div id="game-screen" class="screen hidden">
+            <div class="game-top">
+                <div class="game-title-block">
+                    <div id="user-info">歡迎，<span id="display-user"></span></div>
+                    <h2 id="current-category-name"></h2>
+                </div>
+                <button id="restart-button" class="icon-button" type="button" onclick="restartGame()">重做</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">目前得分<br><span id="score">0</span></div>
+                <div class="stat-card">正確個數<br><span id="correct-count">0</span></div>
+                <div class="stat-card">錯誤個數<br><span id="wrong-count">0</span></div>
+                <div class="stat-card">剩餘時間<br><span id="countdown-timer">0</span> 秒</div>
+            </div>
+            <div id="question-box"><img id="question-img" src="" alt="題目圖片" style="max-height: 150px; width: auto;"></div>
+            <div class="progress-bar">
+                已完成：<span id="completed-count">0</span> / 總共：<span id="total-count">0</span>
+            </div>
+            <input type="text" id="answer-input" placeholder="請輸入輔助字型碼後，按空白鍵提交" autocomplete="off">
+            <p class="login-note">按空白鍵即可提交，系統會自動記錄結果。</p>
+            <div id="answer-feedback" class="answer-feedback"></div>
+            <hr>
+            <div id="result-summary" class="result-summary hidden"></div>
+        </div>
+    </div>
+
+    <dialog id="custom-alert" class="custom-modal" aria-labelledby="custom-alert-title">
+        <form method="dialog" class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h3 id="custom-alert-title">系統提示</h3>
+                <button type="button" class="custom-modal-close" aria-label="關閉" onclick="confirmCustomAlert()">×</button>
+            </div>
+            <div class="custom-modal-body">
+                <p id="custom-alert-message"></p>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" onclick="confirmCustomAlert()">確定</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="student_accounts.js"></script>
+    <script src="question_bank.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+/* 讓整個網頁置中，背景使用舒服的淺藍色 */
+body {
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+    background: linear-gradient(135deg, #f0f8ff 0%, #eaf4ff 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 遊戲方塊外觀 */
+#game-container {
+    position: relative;
+    background-color: white;
+    padding: 24px 24px 20px;
+    border-radius: 18px;
+    box-shadow: 0 14px 40px rgba(44, 62, 80, 0.12);
+    width: min(480px, 100%);
+    max-width: 100%;
+    max-height: 92vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+h2 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.login-note {
+    color: #7f8c8d;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+.login-message {
+    color: #e74c3c;
+    min-height: 20px;
+    margin-bottom: 12px;
+    text-align: center;
+    font-size: 15px;
+}
+
+/* 畫面切換：核心修正 */
+.screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+}
+
+/* 當有 hidden 這個類別時，完全隱藏該畫面 */
+.hidden {
+    display: none !important;
+}
+
+/* 登入輸入框排版 */
+.input-group {
+    margin-bottom: 20px;
+    width: 90%;
+}
+
+.input-group label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #555;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.input-group input {
+    width: 100%;
+    font-size: 18px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 2px solid #bdc3c7;
+    border-radius: 8px;
+}
+
+/* 分類勾選框排版 */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 25px;
+    font-size: 20px;
+    width: 80%;
+}
+
+.checkbox-group label {
+    cursor: pointer;
+}
+
+.checkbox-group input {
+    transform: scale(1.3);
+    margin-right: 12px;
+}
+
+/* 遊戲區樣式 */
+#user-info {
+    font-size: 16px;
+    color: #7f8c8d;
+    text-align: left;
+    width: 100%;
+    margin-top: 0;
+}
+
+.game-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.game-title-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+}
+
+#current-category-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f497a;
+    line-height: 1.2;
+}
+
+.icon-button {
+    position: static;
+    top: auto;
+    right: auto;
+    padding: 10px 16px;
+    min-width: auto;
+}
+
+#question-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 12px;
+    background: linear-gradient(145deg, #f7fbff, #edf5ff);
+    border-radius: 12px;
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+    border: 1px solid #dce9f8;
+}
+
+#question-img {
+    max-height: 32vh;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+#answer-input {
+    font-size: 20px;
+    padding: 10px 12px;
+    width: 100%;
+    text-align: center;
+    border: 2px solid #bdc3c7;
+    border-radius: 10px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+#answer-input:focus {
+    border-color: #3498db;
+}
+
+.progress-bar {
+    width: 100%;
+    margin: 0;
+    padding: 10px 14px;
+    background: #edf6ff;
+    border-radius: 10px;
+    color: #2c3e50;
+    font-weight: 700;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.answer-feedback {
+    width: 100%;
+    min-height: 24px;
+    color: #e74c3c;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.result-summary {
+    width: 100%;
+    padding: 14px 16px;
+    background-color: #f0f8ff;
+    border-radius: 10px;
+    color: #34495e;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    box-sizing: border-box;
+}
+
+.icon-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 8px 12px;
+    width: auto;
+    min-width: 68px;
+    font-size: 15px;
+    border-radius: 999px;
+    background: #f5f9ff;
+    color: #2c3e50;
+    border: 1px solid #dbe8f7;
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.08);
+}
+
+.icon-button:hover {
+    background: #e9f3ff;
+    color: #1d4f8b;
+}
+
+/* 大按鈕設計 */
+button {
+    font-size: 18px;
+    padding: 12px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+    width: 100%;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+#custom-alert {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, 92vw);
+    max-width: 100%;
+    border: none;
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+    background: transparent;
+    z-index: 1000;
+}
+
+#custom-alert::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+.custom-modal-content {
+    background: #ffffff;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(44, 62, 80, 0.08);
+}
+
+.custom-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    background: #f6fbff;
+    border-bottom: 1px solid #e9f2f8;
+}
+
+.custom-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #2c3e50;
+}
+
+.custom-modal-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #7f8c8d;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.custom-modal-close:hover {
+    background: rgba(52, 152, 219, 0.12);
+    color: #2980b9;
+}
+
+.custom-modal-body {
+    padding: 24px 22px;
+    text-align: center;
+    color: #34495e;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.custom-modal-footer {
+    padding: 18px 20px 22px;
+}
+
+.custom-modal-footer button {
+    width: 100%;
+    font-size: 18px;
+    padding: 14px;
+}
+
+hr {
+    width: 100%;
+    border: 0;
+    height: 1px;
+    background: #eee;
+    margin: 10px 0 0;
+}
+
+/* 四宮格數據統計 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    font-size: 12px;
+    color: #556;
+    box-sizing: border-box;
+    margin: 2px 0 4px;
+}
+
+.stat-card {
+    background: linear-gradient(145deg, #f9fcff, #eef6ff);
+    padding: 8px 4px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid #dce9f8;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.stat-card span {
+    font-weight: 800;
+    color: #e74c3c;
+    font-size: 15px;
+    margin-top: 2px;
+}
