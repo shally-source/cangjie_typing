@@ -451,10 +451,16 @@ function nextQuestion() {
     const randomIndex = Math.floor(Math.random() * selectedQuestions.length);
     currentQuestion = selectedQuestions.splice(randomIndex, 1)[0];
     const feedbackElement = document.getElementById("answer-feedback");
+    const questionImage = document.getElementById("question-img");
     feedbackElement.textContent = "";
     feedbackElement.classList.remove("feedback-wrong");
     document.getElementById("mistake-mark").style.display = "none";
-    document.getElementById("question-img").src = currentQuestion.img;
+    questionImage.style.display = "none";
+    questionImage.removeAttribute("src");
+    if (typeof currentQuestion.img === "string" && currentQuestion.img.trim()) {
+        const imagePath = currentQuestion.img.trim().replace(/\\/g, "/").replace(/^\/+/, "");
+        questionImage.src = encodeURI(`./${imagePath}`);
+    }
     document.getElementById("answer-input").value = "";
     document.getElementById("answer-input").focus();
 }
@@ -626,6 +632,16 @@ function handleCountdownExpired() {
 window.onload = function() {
     resetGameState();
     showScreen("login-screen");
+    const questionImage = document.getElementById('question-img');
+    if (questionImage) {
+        questionImage.addEventListener('load', () => {
+            questionImage.style.display = 'block';
+        });
+        questionImage.addEventListener('error', () => {
+            questionImage.style.display = 'none';
+            questionImage.removeAttribute('src');
+        });
+    }
     const allCategoryCheckbox = document.getElementById('cat-all');
     if (allCategoryCheckbox) {
         allCategoryCheckbox.addEventListener('change', updateCategoryCheckboxState);
