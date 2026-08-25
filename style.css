@@ -149,6 +149,7 @@ h2 {
 }
 
 #question-box {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -160,6 +161,19 @@ h2 {
     text-align: center;
     box-sizing: border-box;
     border: 1px solid #dce9f8;
+}
+
+.mistake-mark {
+    display: none;
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    color: #e74c3c;
+    font-size: 80px;
+    font-weight: 800;
+    line-height: 0.8;
+    opacity: 0.8;
+    pointer-events: none;
 }
 
 #question-img {
@@ -201,8 +215,26 @@ h2 {
     min-height: 24px;
     color: #e74c3c;
     text-align: center;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.feedback-wrong {
+    padding: 12px 20px;
+    background-color: #ffebee;
+    border: 2px solid #e53935;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2);
+    box-sizing: border-box;
+}
+
+.correct-highlight {
+    color: #b71c1c;
+    font-size: 36px;
+    font-weight: 800;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 4px;
 }
 
 .result-summary {
@@ -371,4 +403,107 @@ hr {
     color: #e74c3c;
     font-size: 15px;
     margin-top: 2px;
+}
+
+.leaderboard-button {
+    background: #f39c12;
+    margin-top: 2px;
+}
+
+.leaderboard-button:hover {
+    background: #d98200;
+}
+
+.leaderboard-modal {
+    width: min(720px, 94vw);
+    max-width: 100%;
+    border: none;
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+    background: transparent;
+}
+
+.leaderboard-modal::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+.leaderboard-body {
+    padding: 20px;
+}
+
+.leaderboard-filter {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.leaderboard-select {
+    width: 100%;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    border: 2px solid #d5e7f8;
+    border-radius: 10px;
+    background: #f6fbff;
+    color: #2c3e50;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.leaderboard-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.leaderboard-tab {
+    padding: 10px 6px;
+    background: #edf6ff;
+    color: #2c3e50;
+    border: 1px solid #d5e7f8;
+    font-size: 15px;
+}
+
+.leaderboard-tab:hover,
+.leaderboard-tab.active {
+    background: #3498db;
+    color: white;
+}
+
+.leaderboard-table-wrap {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #34495e;
+    text-align: center;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+    padding: 11px 8px;
+    border-bottom: 1px solid #e5eef6;
+}
+
+.leaderboard-table th {
+    position: sticky;
+    top: 0;
+    background: #f6fbff;
+    color: #1f497a;
+}
+
+.leaderboard-table tr.current-student {
+    background: #fff5df;
+    font-weight: bold;
+}
+
+.leaderboard-empty {
+    padding: 32px 8px !important;
+    color: #7f8c8d;
 }
