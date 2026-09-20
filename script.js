@@ -10,6 +10,7 @@ let wrongCount = 0;
 let currentStudent = null;
 let currentStudentClass = '';
 let currentStudentId = '';
+let currentStudentName = '';
 let countdownTimeLeft = 0;
 let countdownTimerId = null;
 let countdownDuration = 0;
@@ -21,7 +22,8 @@ let challengeCategories = [];
 let challengeScoreSaved = false;
 let currentCategory = '';
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwAR-vfUwpy409Ghg816sG6hv8zyp6j1pbNI05JQT-5W_LqG_xyKn9VfF5Lp-Pj1apINw/exec';
+const ACCOUNT_API_URL = 'https://script.google.com/macros/s/AKfycbzBgTICamMJ-EVDmQ1KYBEhNstB7FjScb34Ygm5KnqHh9RAReIzHe6dorYDE3998zTb/exec';
+const SCORE_API_URL = 'https://script.google.com/macros/s/AKfycbwAR-vfUwpy409Ghg816sG6hv8zyp6j1pbNI05JQT-5W_LqG_xyKn9VfF5Lp-Pj1apINw/exec';
 
 const countdownSettings = {
     "哲理類": 123,
@@ -31,8 +33,42 @@ const countdownSettings = {
     "全部類別": 525
 };
 
-// 2. 學生登入資料（由附檔中的正式帳密資料載入）
-const studentAccounts = window.studentAccounts || {};
+// 2. 學生登入資料由 API 動態載入
+window.studentAccounts = window.studentAccounts || {};
+let studentAccountsLoaded = false;
+let studentAccountsLoadFailed = false;
+
+async function loadStudentAccounts() {
+    try {
+        console.log("正在嘗試從以下網址抓取資料:", ACCOUNT_API_URL);
+        const response = await fetch(`${ACCOUNT_API_URL}?action=getAccounts`);
+        if (!response.ok) {
+            throw new Error(`API 回應錯誤：${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("GAS 回傳原始資料:", data);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+            throw new Error('API 回傳的帳號資料格式錯誤');
+        }
+
+        window.studentAccounts = data.data || data;
+        console.log("解析後的學生帳號清單:", window.studentAccounts);
+        studentAccountsLoaded = true;
+        studentAccountsLoadFailed = false;
+        const loginMessage = document.getElementById("login-message");
+        if (loginMessage) {
+            loginMessage.textContent = "";
+        }
+    } catch (error) {
+        console.error("載入學生資料失敗:", error);
+        studentAccountsLoadFailed = true;
+        const loginMessage = document.getElementById("login-message");
+        if (loginMessage) {
+            loginMessage.textContent = "學生帳號資料載入失敗，請檢查 API 網址與 GAS 部署權限！";
+        }
+    }
+}
 
 let customAlertCallback = null;
 let isTimerStarted = false;
@@ -122,18 +158,17 @@ function goToMainMenu() {
 }
 
 function saveScore(username, category, correctRate, timeUsed) {
-    const accountRecord = studentAccounts[username];
     const scoreData = {
         studentClass: currentStudentClass,
         studentId: currentStudentId,
-        name: getRealName(username),
+        name: currentStudentName || getRealName(username),
         account: username,
         category,
         score: score,
         timeSpent: timeUsed
     };
 
-    return fetch(API_URL, {
+    return fetch(SCORE_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(scoreData)
@@ -144,7 +179,7 @@ function saveScore(username, category, correctRate, timeUsed) {
 
 async function getTopScores(category) {
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(SCORE_API_URL);
         if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
         const payload = await response.json();
         const records = Array.isArray(payload) ? payload : payload.data || payload.records || [];
@@ -183,7 +218,7 @@ function normalizeScoreRecord(record) {
 }
 
 function getRealName(username) {
-    const accountRecord = studentAccounts[username];
+    const accountRecord = window.studentAccounts[username];
     const name = accountRecord && typeof accountRecord === 'object' ? accountRecord.name : null;
     return name || username;
 }
@@ -419,26 +454,46 @@ function loginStudent() {
     const password = document.getElementById("student-password").value.trim();
     const loginMessage = document.getElementById("login-message");
 
+    if (studentAccountsLoadFailed) {
+        loginMessage.textContent = "學生帳號資料載入失敗，請檢查 API 網址與 GAS 部署權限！";
+        return;
+    }
+
+    if (!studentAccountsLoaded) {
+        loginMessage.textContent = "學生帳號資料載入中，請稍後...";
+        return;
+    }
+
     if (!account || !password) {
         loginMessage.textContent = "請輸入帳號與密碼。";
         return;
     }
 
-    const accountRecord = studentAccounts[account];
+    const matchedAccount = Object.keys(window.studentAccounts).find(
+        storedAccount => storedAccount.toLowerCase() === account.toLowerCase()
+    );
+
+    if (!matchedAccount) {
+        loginMessage.textContent = "帳號不存在";
+        return;
+    }
+
+    const accountRecord = window.studentAccounts[matchedAccount];
     const storedPassword = accountRecord && typeof accountRecord === 'object'
         ? accountRecord.password
         : accountRecord;
 
     if (storedPassword === password) {
-        currentStudent = account;
+        currentStudent = matchedAccount;
+        currentStudentName = accountRecord?.name || '';
         currentStudentClass = accountRecord?.studentClass || accountRecord?.class || '';
         currentStudentId = accountRecord?.studentId || accountRecord?.id || '';
-        document.getElementById("display-user").textContent = getRealName(currentStudent);
+        document.getElementById("display-user").textContent = currentStudentName || getRealName(currentStudent);
         loginMessage.textContent = "登入成功！";
         showScreen("category-screen");
         document.getElementById("student-password").value = "";
     } else {
-        loginMessage.textContent = "帳號或密碼錯誤，請重新輸入。";
+        loginMessage.textContent = "密碼錯誤";
     }
 }
 
@@ -630,6 +685,7 @@ function handleCountdownExpired() {
 }
 
 window.onload = function() {
+    loadStudentAccounts();
     resetGameState();
     showScreen("login-screen");
     const questionImage = document.getElementById('question-img');
