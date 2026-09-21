@@ -555,12 +555,23 @@ function showCompletionMessage(message) {
         if (!dialog || !messageElement || !mistakesElement || !retryButton) return;
 
         messageElement.textContent = message;
-        mistakesElement.innerHTML = wrongQuestions.map(question => `
+        mistakesElement.innerHTML = wrongQuestions.map(question => {
+            const imagePath = typeof question.img === 'string' && question.img.trim()
+                ? encodeURI(`./${question.img.trim().replace(/\\/g, "/").replace(/^\/+/, "")}`)
+                : '';
+            const questionText = question.question || question.name || question.text || question.title || '（無題目）';
+            const questionContent = imagePath
+                ? `<img class="mistake-question-image" src="${imagePath}" alt="題目圖片">`
+                : `<strong>${escapeHtml(questionText)}</strong>`;
+
+            return `
             <article class="mistake-card">
+                <div><span>題目</span>${questionContent}</div>
                 <div><span>正確答案</span><strong>${escapeHtml(question.code)}</strong></div>
                 <div><span>您的輸入</span><strong>${escapeHtml(question.studentInput || '（未輸入）')}</strong></div>
             </article>
-        `).join('');
+        `;
+        }).join('');
         mistakesElement.classList.remove('hidden');
         retryButton.classList.remove('hidden');
         customAlertCallback = goToMainMenu;
