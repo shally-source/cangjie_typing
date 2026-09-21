@@ -71,6 +71,7 @@ async function loadStudentAccounts() {
 }
 
 let customAlertCallback = null;
+let customAlertRetryCallback = null;
 let isTimerStarted = false;
 let isChallengeActive = false;
 
@@ -109,6 +110,8 @@ function ensureAudioContext() {
 function showCustomAlert(message, callback) {
     const dialog = document.getElementById('custom-alert');
     const messageElement = document.getElementById('custom-alert-message');
+    const mistakesElement = document.getElementById('mistake-cards');
+    const retryButton = document.getElementById('retry-mistakes-button');
 
     if (!dialog || !messageElement) {
         alert(message);
@@ -119,7 +122,11 @@ function showCustomAlert(message, callback) {
     }
 
     messageElement.textContent = message;
+    mistakesElement?.classList.add('hidden');
+    if (mistakesElement) mistakesElement.innerHTML = '';
+    retryButton?.classList.add('hidden');
     customAlertCallback = typeof callback === 'function' ? callback : null;
+    customAlertRetryCallback = null;
 
     if (typeof dialog.showModal === 'function') {
         dialog.showModal();
@@ -148,6 +155,15 @@ function confirmCustomAlert() {
     }
 
     closeCustomAlert();
+}
+
+function retryMistakes() {
+    if (!customAlertRetryCallback) return;
+    const callback = customAlertRetryCallback;
+    customAlertRetryCallback = null;
+    customAlertCallback = null;
+    closeCustomAlert();
+    callback();
 }
 
 function goToMainMenu() {
@@ -526,7 +542,30 @@ function showCompletionMessage(message) {
     updateProgress();
 
     window.setTimeout(() => {
-        showCustomAlert(message, goToMainMenu);
+        const wrongQuestions = challengeQuestions.filter(question => question.answerWasCorrect === false);
+        if (wrongQuestions.length === 0) {
+            showCustomAlert(message, goToMainMenu);
+            return;
+        }
+
+        const dialog = document.getElementById('custom-alert');
+        const messageElement = document.getElementById('custom-alert-message');
+        const mistakesElement = document.getElementById('mistake-cards');
+        const retryButton = document.getElementById('retry-mistakes-button');
+        if (!dialog || !messageElement || !mistakesElement || !retryButton) return;
+
+        messageElement.textContent = message;
+        mistakesElement.innerHTML = wrongQuestions.map(question => `
+            <article class="mistake-card">
+                <div><span>正確答案</span><strong>${escapeHtml(question.code)}</strong></div>
+                <div><span>您的輸入</span><strong>${escapeHtml(question.studentInput || '（未輸入）')}</strong></div>
+            </article>
+        `).join('');
+        mistakesElement.classList.remove('hidden');
+        retryButton.classList.remove('hidden');
+        customAlertCallback = goToMainMenu;
+        customAlertRetryCallback = () => startWrongAnswerPractice(wrongQuestions);
+        dialog.showModal();
     }, 150);
 }
 
@@ -562,6 +601,7 @@ function checkAnswer() {
     }
 
     const studentAnswer = answerInput.value.trim().toUpperCase();
+    currentQuestion.studentInput = studentAnswer;
     const feedbackElement = document.getElementById("answer-feedback");
     let answerWasWrong = false;
 
@@ -655,6 +695,35 @@ function startGame() {
     updateStats();
     updateProgress();
 
+    showScreen("game-screen");
+    nextQuestion();
+}
+
+function startWrongAnswerPractice(wrongQuestions) {
+    selectedQuestions = wrongQuestions.map(question => ({
+        ...question,
+        answerWasCorrect: undefined,
+        studentInput: ''
+    }));
+    challengeQuestions = [...selectedQuestions];
+    totalQuestions = selectedQuestions.length;
+    answeredCount = 0;
+    challengeCategories = [...new Set(selectedQuestions.map(question => question.category))];
+    currentCategory = '錯題練習';
+    score = 0;
+    correctCount = 0;
+    wrongCount = 0;
+    isTimerStarted = false;
+    countdownDuration = challengeCategories.reduce(
+        (total, category) => total + (countdownSettings[category] || 0), 0
+    );
+    document.getElementById("current-category-name").textContent = "🎯 當前挑戰：錯題重新練習";
+    document.getElementById("answer-feedback").textContent = "";
+    document.getElementById("result-summary").classList.add("hidden");
+    document.getElementById("answer-input").disabled = false;
+    isChallengeActive = true;
+    updateStats();
+    updateProgress();
     showScreen("game-screen");
     nextQuestion();
 }

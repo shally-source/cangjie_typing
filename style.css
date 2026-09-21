@@ -366,6 +366,56 @@ button:hover {
     padding: 14px;
 }
 
+.custom-modal-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.custom-modal-footer #retry-mistakes-button {
+    background: #f39c12;
+}
+
+.custom-modal-footer #retry-mistakes-button:hover {
+    background: #d98200;
+}
+
+.mistake-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    max-height: 34vh;
+    overflow-y: auto;
+    margin-top: 16px;
+    text-align: left;
+}
+
+.mistake-card {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    background: #fff7f5;
+    border: 1px solid #f2c7bd;
+    border-radius: 10px;
+}
+
+.mistake-card div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mistake-card span {
+    color: #7f8c8d;
+    font-size: 13px;
+}
+
+.mistake-card strong {
+    color: #b71c1c;
+    font-size: 20px;
+    overflow-wrap: anywhere;
+}
+
 hr {
     width: 100%;
     border: 0;
