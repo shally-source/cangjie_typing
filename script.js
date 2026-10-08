@@ -21,6 +21,7 @@ let audioContext = null;
 let challengeCategories = [];
 let challengeScoreSaved = false;
 let currentCategory = '';
+let isRetryMode = false;
 
 const ACCOUNT_API_URL = 'https://script.google.com/macros/s/AKfycbzBgTICamMJ-EVDmQ1KYBEhNstB7FjScb34Ygm5KnqHh9RAReIzHe6dorYDE3998zTb/exec';
 const SCORE_API_URL = 'https://script.google.com/macros/s/AKfycbwAR-vfUwpy409Ghg816sG6hv8zyp6j1pbNI05JQT-5W_LqG_xyKn9VfF5Lp-Pj1apINw/exec';
@@ -544,7 +545,10 @@ function showCompletionMessage(message) {
     window.setTimeout(() => {
         const wrongQuestions = challengeQuestions.filter(question => question.answerWasCorrect === false);
         if (wrongQuestions.length === 0) {
-            showCustomAlert(message, goToMainMenu);
+            const completionMessage = isRetryMode
+                ? "針對錯題練習後，你越來越棒，離成功越來越近了！請繼續挑戰吧😊！"
+                : "恭喜你！挑戰成功 😊";
+            showCustomAlert(completionMessage, goToMainMenu);
             return;
         }
 
@@ -682,6 +686,8 @@ function startGame() {
         return;
     }
 
+    isRetryMode = false;
+
     if (!populateSelectedQuestions()) {
         return;
     }
@@ -711,6 +717,7 @@ function startGame() {
 }
 
 function startWrongAnswerPractice(wrongQuestions) {
+    isRetryMode = true;
     selectedQuestions = wrongQuestions.map(question => ({
         ...question,
         answerWasCorrect: undefined,
