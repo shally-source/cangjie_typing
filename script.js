@@ -243,14 +243,14 @@ function getRealName(username) {
 async function renderLeaderboard(category) {
     const list = document.getElementById('leaderboard-list');
     if (!list) return;
-    list.innerHTML = '<tr><td colspan="5" class="leaderboard-empty">正在讀取排行榜...</td></tr>';
+    list.innerHTML = '<tr><td colspan="6" class="leaderboard-empty">正在讀取排行榜...</td></tr>';
     const scores = await getTopScores(category);
     list.innerHTML = scores.length === 0
-        ? '<tr><td colspan="5" class="leaderboard-empty">目前還沒有成績。</td></tr>'
+        ? '<tr><td colspan="6" class="leaderboard-empty">目前還沒有成績。</td></tr>'
         : scores.map((entry, index) => {
             return `
             <tr${entry.account === currentStudent ? ' class="current-student"' : ''}>
-                <td>${index + 1}</td><td>${escapeHtml(entry.studentClass)}</td><td>${escapeHtml(entry.name)}</td>
+                <td>${index + 1}</td><td>${escapeHtml(entry.studentClass)}</td><td>${escapeHtml(entry.name)}</td><td>${escapeHtml(entry.category)}</td>
                 <td>${entry.score}</td><td>${entry.timeSpent} 秒</td>
             </tr>`;
         }).join('');
@@ -595,29 +595,28 @@ function finishChallenge() {
     }
 }
 
-function saveChallengeScores() {
+async function saveChallengeScores() {
     if (isRetryMode || challengeScoreSaved || !currentStudent) return;
     const timeUsed = Math.max(0, countdownDuration - countdownTimeLeft);
     const allCategories = ['哲理類', '筆劃類', '人身類', '字型類'];
     const selectedAllCategories = challengeCategories.length === 1 && challengeCategories[0] === '全部類別';
     const selectedEverySubcategory = allCategories.every(category => challengeCategories.includes(category));
+    challengeScoreSaved = true;
 
     if (selectedAllCategories || selectedEverySubcategory) {
-        saveScore(currentStudent, '全部類別', score, timeUsed);
-        challengeScoreSaved = true;
+        await saveScore(currentStudent, '全部類別', score, timeUsed);
         return;
     }
 
-    challengeCategories.forEach(category => {
+    for (const category of challengeCategories) {
         currentCategory = category;
         const categoryQuestions = challengeQuestions.filter(question => question.category === category);
         const categoryCorrect = categoryQuestions.length > 0
             ? categoryQuestions.filter(question => question.answerWasCorrect).length
             : 0;
         const categoryScore = categoryCorrect * 10;
-        saveScore(currentStudent, currentCategory, categoryScore, timeUsed);
-    });
-    challengeScoreSaved = true;
+        await saveScore(currentStudent, currentCategory, categoryScore, timeUsed);
+    }
 }
 
 function checkAnswer() {
