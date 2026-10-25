@@ -596,8 +596,7 @@ function finishChallenge() {
 }
 
 function saveChallengeScores() {
-    if (isRetryMode) return;
-    if (challengeScoreSaved || !currentStudent) return;
+    if (isRetryMode || challengeScoreSaved || !currentStudent) return;
     const timeUsed = Math.max(0, countdownDuration - countdownTimeLeft);
     const allCategories = ['哲理類', '筆劃類', '人身類', '字型類'];
     const selectedAllCategories = challengeCategories.length === 1 && challengeCategories[0] === '全部類別';
@@ -633,7 +632,9 @@ function checkAnswer() {
     let answerWasWrong = false;
 
     if (studentAnswer === currentQuestion.code) {
-        score += 10;
+        if (!isRetryMode) {
+            score += 10;
+        }
         correctCount += 1;
         feedbackElement.textContent = "答對了！繼續加油。";
         feedbackElement.classList.remove("feedback-wrong");
