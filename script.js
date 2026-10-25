@@ -174,14 +174,14 @@ function goToMainMenu() {
     showScreen('category-screen');
 }
 
-function saveScore(username, category, correctRate, timeUsed) {
+function saveScore(username, category, categoryScore, timeUsed) {
     const scoreData = {
         studentClass: currentStudentClass,
         studentId: currentStudentId,
         name: currentStudentName || getRealName(username),
         account: username,
         category,
-        score: score,
+        score: categoryScore,
         timeSpent: timeUsed
     };
 
@@ -585,6 +585,7 @@ function showCompletionMessage(message) {
 }
 
 function finishChallenge() {
+    document.getElementById("answer-input").disabled = true;
     isChallengeActive = false;
     saveChallengeScores();
     if (correctCount === totalQuestions) {
@@ -595,23 +596,34 @@ function finishChallenge() {
 }
 
 function saveChallengeScores() {
+    if (isRetryMode) return;
     if (challengeScoreSaved || !currentStudent) return;
     const timeUsed = Math.max(0, countdownDuration - countdownTimeLeft);
+    const allCategories = ['哲理類', '筆劃類', '人身類', '字型類'];
+    const selectedAllCategories = challengeCategories.length === 1 && challengeCategories[0] === '全部類別';
+    const selectedEverySubcategory = allCategories.every(category => challengeCategories.includes(category));
+
+    if (selectedAllCategories || selectedEverySubcategory) {
+        saveScore(currentStudent, '全部類別', score, timeUsed);
+        challengeScoreSaved = true;
+        return;
+    }
+
     challengeCategories.forEach(category => {
         currentCategory = category;
         const categoryQuestions = challengeQuestions.filter(question => question.category === category);
         const categoryCorrect = categoryQuestions.length > 0
             ? categoryQuestions.filter(question => question.answerWasCorrect).length
             : 0;
-        const correctRate = categoryQuestions.length === 0 ? 0 : (categoryCorrect / categoryQuestions.length) * 100;
-        saveScore(currentStudent, currentCategory, correctRate, timeUsed);
+        const categoryScore = categoryCorrect * 10;
+        saveScore(currentStudent, currentCategory, categoryScore, timeUsed);
     });
     challengeScoreSaved = true;
 }
 
 function checkAnswer() {
     const answerInput = document.getElementById("answer-input");
-    if (!currentQuestion || answerInput.disabled) {
+    if (!isChallengeActive || !currentQuestion || answerInput.disabled) {
         return;
     }
 
@@ -669,7 +681,7 @@ function checkAnswer() {
 }
 
 function handleKeydown(event) {
-    if (event.code === 'Space' && !document.getElementById('game-screen').classList.contains('hidden')) {
+    if (isChallengeActive && event.code === 'Space' && !document.getElementById('game-screen').classList.contains('hidden')) {
         event.preventDefault();
         checkAnswer();
     }
@@ -762,6 +774,7 @@ function endGame() {
 }
 
 function handleCountdownExpired() {
+    document.getElementById("answer-input").disabled = true;
     isChallengeActive = false;
     countdownTimeLeft = 0;
     updateStats();
