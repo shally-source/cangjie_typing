@@ -32,6 +32,7 @@
                 <label><input type="checkbox" id="cat-shape" value="字型類" checked> 字型類</label>
             </div>
             <button onclick="startGame()">開始練習</button>
+            <button class="mistake-training-button" type="button" onclick="openMistakeCategoryDialog()">📖 錯題專訓</button>
             <button class="leaderboard-button" type="button" onclick="openLeaderboard()">🏆 排行榜</button>
         </div>
 
@@ -76,6 +77,22 @@
                 <button type="button" onclick="confirmCustomAlert()">確定</button>
             </div>
         </form>
+    </dialog>
+
+    <dialog id="mistake-category-modal" class="custom-modal" aria-labelledby="mistake-category-title">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h3 id="mistake-category-title">📖 選擇錯題分類</h3>
+                <button type="button" class="custom-modal-close" aria-label="關閉分類選擇" onclick="closeMistakeCategoryDialog()">×</button>
+            </div>
+            <div class="mistake-category-options">
+                <button type="button" onclick="startMistakeTraining('全部錯題')">全部錯題</button>
+                <button type="button" onclick="startMistakeTraining('哲理類')">哲理類</button>
+                <button type="button" onclick="startMistakeTraining('筆劃類')">筆劃類</button>
+                <button type="button" onclick="startMistakeTraining('人身類')">人身類</button>
+                <button type="button" onclick="startMistakeTraining('字型類')">字型類</button>
+            </div>
+        </div>
     </dialog>
 
     <dialog id="leaderboard-modal" class="custom-modal leaderboard-modal" aria-labelledby="leaderboard-title">

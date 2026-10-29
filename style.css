@@ -303,7 +303,27 @@ button:hover {
     z-index: 1000;
 }
 
+#mistake-category-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, 92vw);
+    max-width: 100%;
+    border: none;
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+    background: transparent;
+    z-index: 1000;
+}
+
 #custom-alert::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+#mistake-category-modal::backdrop {
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(2px);
 }
@@ -470,8 +490,34 @@ hr {
     margin-top: 2px;
 }
 
+.mistake-training-button {
+    background: #2e9b78;
+}
+
+.mistake-training-button:hover {
+    background: #247e61;
+}
+
 .leaderboard-button:hover {
     background: #d98200;
+}
+
+.mistake-category-options {
+    display: grid;
+    gap: 10px;
+    padding: 20px;
+}
+
+.mistake-category-options button {
+    padding: 12px;
+    background: #edf6ff;
+    color: #2c3e50;
+    border: 1px solid #d5e7f8;
+}
+
+.mistake-category-options button:hover {
+    background: #3498db;
+    color: #ffffff;
 }
 
 .leaderboard-modal {

@@ -22,6 +22,8 @@ let challengeCategories = [];
 let challengeScoreSaved = false;
 let currentCategory = '';
 let isRetryMode = false;
+let isMistakeTrainingMode = false;
+let cloudMistakes = [];
 
 const ACCOUNT_API_URL = 'https://script.google.com/macros/s/AKfycbzBgTICamMJ-EVDmQ1KYBEhNstB7FjScb34Ygm5KnqHh9RAReIzHe6dorYDE3998zTb/exec';
 const SCORE_API_URL = 'https://script.google.com/macros/s/AKfycbwAR-vfUwpy409Ghg816sG6hv8zyp6j1pbNI05JQT-5W_LqG_xyKn9VfF5Lp-Pj1apINw/exec';
@@ -165,6 +167,139 @@ function retryMistakes() {
     customAlertCallback = null;
     closeCustomAlert();
     callback();
+}
+
+function openMistakeCategoryDialog() {
+    if (!currentStudent) {
+        showCustomAlert('請先登入學生帳號。');
+        return;
+    }
+
+    const dialog = document.getElementById('mistake-category-modal');
+    if (dialog && typeof dialog.showModal === 'function') {
+        dialog.showModal();
+    }
+}
+
+function closeMistakeCategoryDialog() {
+    const dialog = document.getElementById('mistake-category-modal');
+    if (dialog && dialog.open) dialog.close();
+}
+
+async function fetchCloudMistakes() {
+    const response = await fetch(
+        `${SCORE_API_URL}?action=getMistakes&account=${encodeURIComponent(currentStudent)}`
+    );
+    if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
+
+    const payload = await response.json();
+    const records = Array.isArray(payload)
+        ? payload
+        : payload.mistakes || payload.data?.mistakes || payload.data || payload.records;
+    if (!Array.isArray(records)) {
+        throw new Error('錯題 API 回傳的資料格式錯誤');
+    }
+
+    return records
+        .filter(record => !record.account || String(record.account) === currentStudent)
+        .map(record => ({
+            category: String(record.category || ''),
+            code: String(record.code || '').trim().toUpperCase()
+        }))
+        .filter(mistake => mistake.category && mistake.code);
+}
+
+async function postMistakeAction(action, mistake) {
+    const response = await fetch(SCORE_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            action,
+            account: currentStudent,
+            ...mistake
+        })
+    });
+    if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
+}
+
+function buildMistakeTrainingQuestions(mistakes, category) {
+    const selectedMistakes = mistakes.filter(mistake =>
+        category === '全部錯題' || mistake.category === category
+    );
+    const questionKeys = new Set();
+    const questions = [];
+
+    selectedMistakes.forEach(mistake => {
+        const key = `${mistake.category}::${mistake.code}`;
+        if (questionKeys.has(key)) return;
+        questionKeys.add(key);
+
+        const question = (questionBank[mistake.category] || [])
+            .find(item => String(item.code).toUpperCase() === mistake.code);
+        if (question) {
+            questions.push({
+                ...question,
+                category: mistake.category,
+                answerWasCorrect: undefined,
+                studentInput: ''
+            });
+        }
+    });
+
+    return questions;
+}
+
+async function startMistakeTraining(category) {
+    closeMistakeCategoryDialog();
+    try {
+        cloudMistakes = await fetchCloudMistakes();
+        const questions = buildMistakeTrainingQuestions(cloudMistakes, category);
+        if (questions.length === 0) {
+            showCustomAlert('太棒了！目前沒有累積錯題，快去挑戰其他關卡吧 🎉');
+            return;
+        }
+
+        beginMistakeTraining(questions, category);
+    } catch (error) {
+        console.error('錯題資料讀取失敗：', error);
+        showCustomAlert('錯題資料讀取失敗，請稍後再試。');
+    }
+}
+
+function beginMistakeTraining(questions, category) {
+    resetGameState();
+    isRetryMode = false;
+    isMistakeTrainingMode = true;
+    selectedQuestions = [...questions];
+    challengeQuestions = [...selectedQuestions];
+    totalQuestions = selectedQuestions.length;
+    challengeCategories = [...new Set(selectedQuestions.map(question => question.category))];
+    currentCategory = '錯題專訓';
+    score = 0;
+    correctCount = 0;
+    wrongCount = 0;
+    answeredCount = 0;
+    isTimerStarted = false;
+    countdownDuration = challengeCategories.reduce(
+        (total, questionCategory) => total + (countdownSettings[questionCategory] || 0), 0
+    );
+    document.getElementById('current-category-name').textContent =
+        `📖 錯題專訓：${category}`;
+    document.getElementById('answer-feedback').textContent = '';
+    document.getElementById('result-summary').classList.add('hidden');
+    document.getElementById('answer-input').disabled = false;
+    isChallengeActive = true;
+    updateStats();
+    updateProgress();
+    showScreen('game-screen');
+    nextQuestion();
+}
+
+async function graduateCurrentMistake(question) {
+    cloudMistakes = cloudMistakes.filter(mistake =>
+        mistake.category !== question.category || mistake.code !== question.code
+    );
+    await postMistakeAction('graduateMistake', { code: question.code });
 }
 
 function goToMainMenu() {
@@ -338,10 +473,9 @@ function playTimeUpSound() {
 
 // 把所有題目合成一個大列表，方便隨機抽題
 const allQuestions = [
-    ...questionBank["哲理類"],
-    ...questionBank["筆劃類"],
-    ...questionBank["人身類"],
-    ...questionBank["字型類"]
+    ...["哲理類", "筆劃類", "人身類", "字型類"].flatMap(category =>
+        questionBank[category].map(question => ({ ...question, category }))
+    )
 ];
 
 function updateStats() {
@@ -388,6 +522,8 @@ function stopCountdownTimer() {
 
 function resetGameState() {
     isChallengeActive = false;
+    isRetryMode = false;
+    isMistakeTrainingMode = false;
     selectedQuestions = [];
     challengeQuestions = [];
     currentQuestion = null;
@@ -444,7 +580,7 @@ function populateSelectedQuestions() {
     }
 
     selectedQuestions = categories[0] === '全部類別'
-        ? allQuestions.map(question => ({ ...question, category: '全部類別' }))
+        ? allQuestions.map(question => ({ ...question }))
         : categories.flatMap(category =>
             (questionBank[category] || []).map(question => ({ ...question, category }))
         );
@@ -596,7 +732,7 @@ function finishChallenge() {
 }
 
 async function saveChallengeScores() {
-    if (isRetryMode || challengeScoreSaved || !currentStudent) return;
+    if (isRetryMode || isMistakeTrainingMode || challengeScoreSaved || !currentStudent) return;
     const timeUsed = Math.max(0, countdownDuration - countdownTimeLeft);
     const allCategories = ['哲理類', '筆劃類', '人身類', '字型類'];
     const selectedAllCategories = challengeCategories.length === 1 && challengeCategories[0] === '全部類別';
@@ -619,7 +755,7 @@ async function saveChallengeScores() {
     }
 }
 
-function checkAnswer() {
+async function checkAnswer() {
     const answerInput = document.getElementById("answer-input");
     if (!isChallengeActive || !currentQuestion || answerInput.disabled) {
         return;
@@ -629,17 +765,29 @@ function checkAnswer() {
     currentQuestion.studentInput = studentAnswer;
     const feedbackElement = document.getElementById("answer-feedback");
     let answerWasWrong = false;
+    let graduationError = null;
 
     if (studentAnswer === currentQuestion.code) {
-        if (!isRetryMode) {
+        if (!isRetryMode && !isMistakeTrainingMode) {
             score += 10;
         }
         correctCount += 1;
-        feedbackElement.textContent = "答對了！繼續加油。";
+        feedbackElement.textContent = isMistakeTrainingMode
+            ? "答對了！正在完成畢業程序。"
+            : "答對了！繼續加油。";
         feedbackElement.classList.remove("feedback-wrong");
         feedbackElement.style.color = "#2ecc71";
         playCorrectSound();
         currentQuestion.answerWasCorrect = true;
+        if (isMistakeTrainingMode) {
+            answerInput.disabled = true;
+            try {
+                await graduateCurrentMistake(currentQuestion);
+            } catch (error) {
+                graduationError = error;
+                console.error('錯題畢業同步失敗：', error);
+            }
+        }
     } else {
         wrongCount += 1;
         feedbackElement.innerHTML = `答錯了！正確答案是：<span class="correct-highlight"></span>`;
@@ -649,11 +797,28 @@ function checkAnswer() {
         playWrongSound();
         currentQuestion.answerWasCorrect = false;
         answerWasWrong = true;
+        if (!isRetryMode && !isMistakeTrainingMode) {
+            postMistakeAction('addMistake', {
+                category: currentQuestion.category,
+                code: currentQuestion.code
+            }).catch(error => {
+                console.error('錯題新增同步失敗：', error);
+                showCustomAlert('錯題同步失敗，請稍後再試。');
+            });
+        }
     }
 
     answeredCount += 1;
     updateStats();
     updateProgress();
+
+    if (!answerWasWrong && isMistakeTrainingMode) {
+        const graduationMessage = graduationError
+            ? '此題已從本次練習移除，但雲端畢業同步失敗，請稍後再試。'
+            : '太棒了！此題已成功畢業！';
+        showCustomAlert(graduationMessage, advanceAfterAnswer);
+        return;
+    }
 
     if (answerWasWrong) {
         answerInput.disabled = true;
@@ -663,20 +828,21 @@ function checkAnswer() {
             feedbackElement.textContent = "";
             feedbackElement.classList.remove("feedback-wrong");
             answerInput.disabled = false;
-            if (answeredCount >= totalQuestions) {
-                finishChallenge();
-                return;
-            }
-            nextQuestion();
+            advanceAfterAnswer();
         }, 2000);
         return;
     }
 
+    advanceAfterAnswer();
+}
+
+function advanceAfterAnswer() {
     if (answeredCount >= totalQuestions) {
         finishChallenge();
         return;
     }
 
+    document.getElementById("answer-input").disabled = false;
     nextQuestion();
 }
 
@@ -699,6 +865,7 @@ function startGame() {
     }
 
     isRetryMode = false;
+    isMistakeTrainingMode = false;
 
     if (!populateSelectedQuestions()) {
         return;
@@ -730,6 +897,7 @@ function startGame() {
 
 function startWrongAnswerPractice(wrongQuestions) {
     isRetryMode = true;
+    isMistakeTrainingMode = false;
     selectedQuestions = wrongQuestions.map(question => ({
         ...question,
         answerWasCorrect: undefined,
