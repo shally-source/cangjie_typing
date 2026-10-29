@@ -89,6 +89,9 @@ window.addEventListener('beforeunload', (event) => {
 
 function handleAnswerInput(event) {
     const input = event.target;
+    if (isMistakeTrainingMode && input.value.trim().length > 0) {
+        document.getElementById('answer-feedback').textContent = '';
+    }
     if (!isTimerStarted && !document.getElementById('game-screen').classList.contains('hidden') && input.value.trim().length > 0) {
         isTimerStarted = true;
         startCountdownTimer();
@@ -186,40 +189,126 @@ function closeMistakeCategoryDialog() {
     if (dialog && dialog.open) dialog.close();
 }
 
-async function fetchCloudMistakes() {
-    const response = await fetch(
-        `${SCORE_API_URL}?action=getMistakes&account=${encodeURIComponent(currentStudent)}`
-    );
-    if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
+function getLocalMistakes() {
+    if (!currentStudent) return [];
 
-    const payload = await response.json();
-    const records = Array.isArray(payload)
-        ? payload
-        : payload.mistakes || payload.data?.mistakes || payload.data || payload.records;
-    if (!Array.isArray(records)) {
-        throw new Error('錯題 API 回傳的資料格式錯誤');
+    try {
+        const storedMistakes = JSON.parse(localStorage.getItem(`mistakes_${currentStudent}`) || '[]');
+        if (!Array.isArray(storedMistakes)) {
+            console.warn('本機錯題資料格式錯誤。');
+            return [];
+        }
+
+        return storedMistakes
+            .filter(mistake => mistake && mistake.category && mistake.code)
+            .map(mistake => ({
+                category: String(mistake.category),
+                code: String(mistake.code).trim().toUpperCase()
+            }))
+            .filter(mistake => mistake.code);
+    } catch (error) {
+        console.warn('本機錯題讀取失敗：', error);
+        return [];
     }
-
-    return records
-        .filter(record => !record.account || String(record.account) === currentStudent)
-        .map(record => ({
-            category: String(record.category || ''),
-            code: String(record.code || '').trim().toUpperCase()
-        }))
-        .filter(mistake => mistake.category && mistake.code);
 }
 
-async function postMistakeAction(action, mistake) {
-    const response = await fetch(SCORE_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-            action,
-            account: currentStudent,
-            ...mistake
-        })
-    });
-    if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
+function saveLocalMistakes(mistakes) {
+    if (!currentStudent) return;
+
+    try {
+        localStorage.setItem(`mistakes_${currentStudent}`, JSON.stringify(mistakes));
+    } catch (error) {
+        console.warn('本機錯題儲存失敗：', error);
+    }
+}
+
+function addLocalMistake(category, code) {
+    if (!category || !code) return;
+    const mistake = { category: String(category), code: String(code).trim().toUpperCase() };
+    if (!mistake.code) return;
+
+    const mistakes = getLocalMistakes();
+    if (!mistakes.some(item => item.category === mistake.category && item.code === mistake.code)) {
+        mistakes.push(mistake);
+        saveLocalMistakes(mistakes);
+    }
+}
+
+function removeLocalMistake(category, code) {
+    const normalizedCode = String(code).trim().toUpperCase();
+    saveLocalMistakes(getLocalMistakes().filter(mistake =>
+        mistake.category !== category || mistake.code !== normalizedCode
+    ));
+}
+
+async function fetchCloudMistakes() {
+    const localMistakes = getLocalMistakes();
+    try {
+        const response = await fetch(
+            `${SCORE_API_URL}?action=getMistakes&account=${encodeURIComponent(currentStudent)}`
+        );
+        if (!response.ok) throw new Error(`API 回應錯誤：${response.status}`);
+
+        const payload = await response.json();
+        const records = Array.isArray(payload)
+            ? payload
+            : payload?.mistakes || payload?.data?.mistakes || payload?.data || payload?.records;
+        if (!Array.isArray(records)) {
+            throw new Error('錯題 API 回傳的資料格式錯誤');
+        }
+
+        const cloudMistakes = records
+            .filter(record => record && (!record.account || String(record.account) === currentStudent))
+            .map(record => ({
+                category: String(record.category || ''),
+                code: String(record.code || '').trim().toUpperCase()
+            }))
+            .filter(mistake => mistake.category && mistake.code);
+        const mergedMistakes = [...localMistakes];
+        cloudMistakes.forEach(mistake => {
+            if (!mergedMistakes.some(item =>
+                item.category === mistake.category && item.code === mistake.code
+            )) {
+                mergedMistakes.push(mistake);
+            }
+        });
+        saveLocalMistakes(mergedMistakes);
+        return mergedMistakes;
+    } catch (error) {
+        console.warn('雲端錯題讀取失敗，改用本機資料：', error);
+        return getLocalMistakes();
+    }
+}
+
+function postMistakeAction(action, mistake) {
+    if (action === 'addMistake') {
+        addLocalMistake(mistake.category, mistake.code);
+    } else if (action === 'graduateMistake') {
+        removeLocalMistake(mistake.category, mistake.code);
+    }
+
+    const requestMistake = action === 'graduateMistake'
+        ? { code: mistake.code }
+        : mistake;
+    try {
+        fetch(SCORE_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action,
+                account: currentStudent,
+                ...requestMistake
+            })
+        }).then(response => {
+            if (!response.ok) {
+                console.warn(`錯題雲端同步失敗：API 回應錯誤 ${response.status}`);
+            }
+        }).catch(error => {
+            console.warn('錯題雲端同步失敗：', error);
+        });
+    } catch (error) {
+        console.warn('錯題雲端同步失敗：', error);
+    }
 }
 
 function buildMistakeTrainingQuestions(mistakes, category) {
@@ -251,19 +340,14 @@ function buildMistakeTrainingQuestions(mistakes, category) {
 
 async function startMistakeTraining(category) {
     closeMistakeCategoryDialog();
-    try {
-        cloudMistakes = await fetchCloudMistakes();
-        const questions = buildMistakeTrainingQuestions(cloudMistakes, category);
-        if (questions.length === 0) {
-            showCustomAlert('太棒了！目前沒有累積錯題，快去挑戰其他關卡吧 🎉');
-            return;
-        }
-
-        beginMistakeTraining(questions, category);
-    } catch (error) {
-        console.error('錯題資料讀取失敗：', error);
-        showCustomAlert('錯題資料讀取失敗，請稍後再試。');
+    cloudMistakes = await fetchCloudMistakes();
+    const questions = buildMistakeTrainingQuestions(cloudMistakes, category);
+    if (questions.length === 0) {
+        showCustomAlert('太棒了！目前沒有累積錯題，快去挑戰其他關卡吧 🎉');
+        return;
     }
+
+    beginMistakeTraining(questions, category);
 }
 
 function beginMistakeTraining(questions, category) {
@@ -295,11 +379,14 @@ function beginMistakeTraining(questions, category) {
     nextQuestion();
 }
 
-async function graduateCurrentMistake(question) {
+function graduateCurrentMistake(question) {
     cloudMistakes = cloudMistakes.filter(mistake =>
         mistake.category !== question.category || mistake.code !== question.code
     );
-    await postMistakeAction('graduateMistake', { code: question.code });
+    postMistakeAction('graduateMistake', {
+        category: question.category,
+        code: question.code
+    });
 }
 
 function goToMainMenu() {
@@ -660,7 +747,9 @@ function nextQuestion() {
     currentQuestion = selectedQuestions.splice(randomIndex, 1)[0];
     const feedbackElement = document.getElementById("answer-feedback");
     const questionImage = document.getElementById("question-img");
-    feedbackElement.textContent = "";
+    if (!isMistakeTrainingMode) {
+        feedbackElement.textContent = "";
+    }
     feedbackElement.classList.remove("feedback-wrong");
     document.getElementById("mistake-mark").style.display = "none";
     questionImage.style.display = "none";
@@ -755,7 +844,7 @@ async function saveChallengeScores() {
     }
 }
 
-async function checkAnswer() {
+function checkAnswer() {
     const answerInput = document.getElementById("answer-input");
     if (!isChallengeActive || !currentQuestion || answerInput.disabled) {
         return;
@@ -765,7 +854,6 @@ async function checkAnswer() {
     currentQuestion.studentInput = studentAnswer;
     const feedbackElement = document.getElementById("answer-feedback");
     let answerWasWrong = false;
-    let graduationError = null;
 
     if (studentAnswer === currentQuestion.code) {
         if (!isRetryMode && !isMistakeTrainingMode) {
@@ -773,20 +861,14 @@ async function checkAnswer() {
         }
         correctCount += 1;
         feedbackElement.textContent = isMistakeTrainingMode
-            ? "答對了！正在完成畢業程序。"
+            ? "🎉 答對了！此題已成功畢業！"
             : "答對了！繼續加油。";
         feedbackElement.classList.remove("feedback-wrong");
         feedbackElement.style.color = "#2ecc71";
         playCorrectSound();
         currentQuestion.answerWasCorrect = true;
         if (isMistakeTrainingMode) {
-            answerInput.disabled = true;
-            try {
-                await graduateCurrentMistake(currentQuestion);
-            } catch (error) {
-                graduationError = error;
-                console.error('錯題畢業同步失敗：', error);
-            }
+            graduateCurrentMistake(currentQuestion);
         }
     } else {
         wrongCount += 1;
@@ -801,9 +883,6 @@ async function checkAnswer() {
             postMistakeAction('addMistake', {
                 category: currentQuestion.category,
                 code: currentQuestion.code
-            }).catch(error => {
-                console.error('錯題新增同步失敗：', error);
-                showCustomAlert('錯題同步失敗，請稍後再試。');
             });
         }
     }
@@ -813,10 +892,7 @@ async function checkAnswer() {
     updateProgress();
 
     if (!answerWasWrong && isMistakeTrainingMode) {
-        const graduationMessage = graduationError
-            ? '此題已從本次練習移除，但雲端畢業同步失敗，請稍後再試。'
-            : '太棒了！此題已成功畢業！';
-        showCustomAlert(graduationMessage, advanceAfterAnswer);
+        advanceAfterAnswer();
         return;
     }
 
